@@ -8,6 +8,9 @@ from scapy.config import conf
 from scapy.layers.inet import IP, ICMP, UDP, TCP
 from scapy.sendrecv import sr1
 from scapy.all import *
+import json
+
+
 
 
 maxHops = 255
@@ -20,6 +23,8 @@ _DEFAULT_RESOLVE_HOSTNAMES = True
 NO_INFO_SYM = "*"
 
 T = TypeVar("T")
+
+
 
 #def _new_trace_packet(destination_ip: str, hop_n: int) -> ICMP:
 #    return IP(dst=destination_ip, ttl=hop_n) / ICMP()
@@ -111,30 +116,40 @@ def _tracert_hop_row(destination_ip: str, #uga.edu
      #       printFunc(best_route)
     #else:
     #routeHop[] = best_route;
+    aList = [{"a":54, "b":87}]
+    lister = []
+    
     y = 1
     z = 1
     if found_destination:
 
         for i in range(len(best_route) -1):
-            print(y, ' ', best_route[y])
+            #print(y, ' ', best_route[y])
             addingTime = 0
-            minTime = time[z]                                                                   
+            minTime = time[z]                                                                  
             maxTime = time[z]
+
             for j in range(numbertests):
                # print(time[z])
                 addingTime = addingTime + time[z]
                 if minTime > time[z]:
                     minTime = time[z]
-                if maxTime < time[z]:
+                elif maxTime < time[z]:
                     maxTime = time[z]
                 z = z + 1
-            print('Minimum ', minTime)
-            print('Maximum ', maxTime)
+            #print('Minimum ', minTime)
+            #print('Maximum ', maxTime)
             average = addingTime / numbertests;
-            print('Average ', average)
-                
-           
+            #print('Average ', average)
+            lister.append({ "avg" : average, "hop" : y, 'hosts' : best_route[y], "max" : maxTime,  "min" : minTime}) 
             y = y + 1
+    
+    json_data = json.dumps(lister, indent=5)
+    jsonFile = open("data.json", "w")
+    jsonFile.write(json_data)
+    jsonFile.close()
+
+    print (json_data)
 
     return found_destination
 
