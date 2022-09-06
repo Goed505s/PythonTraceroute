@@ -1,19 +1,13 @@
-from operator import length_hint
-from typing import Tuple, List, Optional, Callable, TypeVar
-import seaborn as sns
-import pandas as pd
-import matplotlib.pyplot as plt
 from collections import Counter
-from time import perf_counter
 import argparse as ap
-
-from scapy.config import conf
-from scapy.layers.inet import IP, ICMP, UDP, TCP
+from typing import Tuple, List, Optional
+from scapy.layers.inet import IP, ICMP
 from scapy.sendrecv import sr1
 from scapy.all import *
 import json
 import plotly.graph_objects as go
-import numpy as np
+import plotly.io as pio
+import statistics
 
 
 
@@ -23,38 +17,28 @@ _DEFAULT_TIMEOUT = 5
 _DEFAULT_VERBOSITY = False
 num_runs = 3
 _DEFAULT_RESOLVE_HOSTNAMES = True
+output = 'data.json'
+graph = 'graph.pdf'
 time = []
 
-
-
-
-#def _new_trace_packet(destination_ip: str, hop_n: int) -> ICMP:
-#    return IP(dst=destination_ip, ttl=hop_n) / ICMP()
-
-# Credit: https://stackoverflow.com/a/60845191/3000206
-#def get_gateway_of(ip: str) -> str:
-#    return conf.route.route(ip)[2]
 
 def _find_proper_route(replies: List[ICMP]) -> Optional[Tuple[str, bool]]:
     if not replies:
         return None
-    ip_isfin_pairs = [(resp[IP].src, resp[ICMP].type == 0) for resp in replies]
-    found_destination = next((ip for ip, isfin in ip_isfin_pairs if isfin), None)
-    selected_ip = found_destination or Counter(ip for ip, _ in ip_isfin_pairs).most_common(1)[0][0]
+    # Credit: https://stackoverflow.com/a/60845191/3000206
+    ip_pairs = [(resp[IP].src, resp[ICMP].type == 0) for resp in replies]
+    found_destination = next((ip for ip, isfin in ip_pairs if isfin), None)
+    selected_ip = found_destination or Counter(ip for ip, _ in ip_pairs).most_common(1)[0][0]
+
     return selected_ip, bool(found_destination)
-
-
-
-def printFunc(x: str) -> None:
-    print(x.ljust(10), end="", flush=True)
-
 
 def _tracert_hop_row(destination_ip: str, #uga.edu
                      numbertests: int,   #3 is default
                      hop_n: int,     #4
                      #resolve_hostname: bool, 
+                     output_file : str,
                      best_route = [1],
-                     **sr_kwargs, ) -> bool:
+                     **sr_kwargs ) -> bool:
 
     packet = IP(dst=destination_ip, ttl=hop_n) / ICMP()
 
@@ -79,20 +63,24 @@ def _tracert_hop_row(destination_ip: str, #uga.edu
             addingTime = 0
             minTime = time[z]                                                                  
             maxTime = time[z]
-
+            medianTime = time[z]
+            medianArr = []
             for j in range(numbertests):
                 addingTime = addingTime + time[z]
                 if minTime > time[z]:
                     minTime = time[z]
                 elif maxTime < time[z]:
                     maxTime = time[z]
+                medianArr.append(time[z])
                 z = z + 1
+
+            medianTime =  statistics.median(medianArr)
             average = addingTime / numbertests;
-            lister.append({ "avg" : average, "hop" : y, 'hosts' : best_route[y], "max" : maxTime,  "min" : minTime}) 
+            lister.append({ "avg" : average, "hop" : y, 'hosts' : best_route[y], "max" : maxTime, "med" : medianTime, "min" : minTime}) 
             y = y + 1
     
     json_data = json.dumps(lister, indent=5)
-    jsonFile = open("data.json", "w")
+    jsonFile = open(output_file, "w")
     jsonFile.write(json_data)
     jsonFile.close()
 
@@ -101,19 +89,16 @@ def _tracert_hop_row(destination_ip: str, #uga.edu
 
 
 def tracert_internal(ip: str, max_hops: int = maxHops
-                     , number_runs : int = num_runs) :
+                     , number_runs : int = num_runs, output_file : string = output, output_graph : string = graph) :
 
     for curHop in range(1, max_hops + 1):
-        #printFunc(str(curHop))
-        found_destination = _tracert_hop_row(ip, number_runs, curHop)
-        print()
+        found_destination = _tracert_hop_row(ip, number_runs, curHop, output_file)
         if found_destination:
             break
 
     # creating boxplot
     fig = go.Figure()
     dividePlots  = 0
-    print(int(len(time)/number_runs))
     for i in range(int(len(time)/number_runs)):
         plots = [];
         for j in range(number_runs):
@@ -121,7 +106,9 @@ def tracert_internal(ip: str, max_hops: int = maxHops
             dividePlots = dividePlots + 1
         fig.add_trace(go.Box(y= plots))
 
-    fig.show()
+    fig.write_image(output_graph)
+
+
 
 def main():
     input = ap.ArgumentParser()
@@ -134,11 +121,17 @@ def main():
 
     input.add_argument("-n", type=int, default= num_runs,
                         help="Number of times traceroute will run")
-                    
+    
+    input.add_argument("-o", type=str, default= output,
+                        help="Path and name of output JSON file containing the stats")
+
+    input.add_argument("-g", type=str, default= graph,
+                        help="Path and name of output PDF file containing stats graph")
+     
     args = input.parse_args()
    #-d RUN_DELAY     Number of seconds to wait between two consecutive runs
 
-    tracert_internal(args.t, args.m, args.n)
+    tracert_internal(args.t, args.m, args.n, args.o, args.g)
 
 if __name__ == '__main__':
     main()
