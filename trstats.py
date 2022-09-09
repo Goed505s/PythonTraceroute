@@ -8,13 +8,20 @@ import json
 import plotly.graph_objects as go
 import plotly.io as pio
 import statistics
-import time
+import time 
 
-sep 
+from typing import Tuple, List, Optional, Callable, TypeVar
+from collections import Counter
+from time import perf_counter
+import argparse as ap
 
+from scapy.config import conf
+from scapy.layers.inet import IP, ICMP
+from scapy.sendrecv import sr1
 
+from reverse_dns import reverse_dns_lookup
 
-maxHops = 255
+maxHops = 20
 run_delay = 0
 num_runs = 3
 output = 'data.json'
@@ -26,7 +33,6 @@ def _find_proper_route(replies: List[ICMP]) -> Optional[Tuple[str, bool]]:
     if not replies:
         print('No REPLYYY')
         return None
-    # Credit: https://stackoverflow.com/a/60845191/3000206
     ip_pairs = [(resp[IP].src, resp[ICMP].type == 0) for resp in replies]
     found_destination = next((ip for ip, isfin in ip_pairs if isfin), None)
     selected_ip = found_destination or Counter(ip for ip, _ in ip_pairs).most_common(1)[0][0]
@@ -39,31 +45,41 @@ def _tracert_hop_row(destination_ip: str, #uga.edu
                      #resolve_hostname: bool, 
                      output_file : str, run_delaying : int, lastHop : int,
                      best_route = [1],
-                     **sr_kwargs ) -> bool:
+                     **sr1_kwargs ) -> Optional[Tuple[str, bool]]:
 
     packet = IP(dst=destination_ip, ttl=hop_n) / ICMP()
 
     replies = []
+    found_destination = False
+
     for x in range(numbertests):
-        reply = sr1(packet, **sr_kwargs)
+
+        sr1_kwargs.setdefault("timeout", 5)
+        sr1_kwargs.setdefault("verbose", False)
+        reply = sr1(packet, **sr1_kwargs)
+
         if reply is None:
-            print('no reply')
+            print('no reply')                         
         else:
             time.append((reply.time - packet.sent_time) * 1000)
             replies.append(reply)
+            print('interesting')
         
         if run_delaying > 0:
             time.sleep(run_delaying)
-
-    ipHopped, found_destination = _find_proper_route(replies)
-    best_route.append(ipHopped)
+        
+    if not replies:
+     print('hi')
+    else:
+        ipHopped, found_destination = _find_proper_route(replies)
+        best_route.append(ipHopped)
+        print('made it here')
 
     lister = []
     
     y = 1
     z = 0
     
-    print(hop_n, ' space ' ,lastHop)
     if found_destination: #or hop_n == (lastHop + 1):
         for i in range(len(best_route) -1):
             addingTime = 0
@@ -87,7 +103,7 @@ def _tracert_hop_row(destination_ip: str, #uga.edu
     
         json_data = json.dumps(lister, indent=5)
         jsonFile = open(output_file, "w")
-        print('jfffffffffffffffffffffffffff', json_data);
+        print('jffffff', json_data);
         jsonFile.write(json_data)
         jsonFile.close()
 
@@ -149,7 +165,7 @@ def main():
 if __name__ == '__main__':
     main()
     
-
+'''
 
 from collections import Counter
 import argparse as ap
@@ -290,3 +306,4 @@ def main():
 if __name__ == '__main__':
     main()
     
+'''
