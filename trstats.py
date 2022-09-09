@@ -112,7 +112,7 @@ def _tracert_hop_row(destination_ip: str, #uga.edu
 
 
 def tracert_internal(ip: str, max_hops: int = maxHops
-                     , number_runs : int = num_runs, output_file : string = output, output_graph : string = graph,
+                     , number_runs : int = num_runs, output_file : str = output, output_graph : str = graph,
                      run_delaying : int = run_delay) :
     
     lastHop = 0;
