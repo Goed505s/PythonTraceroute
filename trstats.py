@@ -45,7 +45,7 @@ def _tracert_hop_row(destination_ip: str, #uga.edu
                      #resolve_hostname: bool, 
                      output_file : str, run_delaying : int, lastHop : int,
                      best_route = [1],
-                     **sr1_kwargs ) -> Optional[Tuple[str, bool]]:
+                     **sr1kwargs ) -> Optional[Tuple[str, bool]]:
 
     packet = IP(dst=destination_ip, ttl=hop_n) / ICMP()
 
@@ -54,9 +54,9 @@ def _tracert_hop_row(destination_ip: str, #uga.edu
 
     for x in range(numbertests):
 
-        sr1_kwargs.setdefault("timeout", 5)
-        sr1_kwargs.setdefault("verbose", False)
-        reply = sr1(packet, **sr1_kwargs)
+        sr1kwargs.setdefault("timeout", 5)
+        sr1kwargs.setdefault("verbose", False)
+        reply = sr1(packet, **sr1kwargs)
 
         if reply is None:
             print('no reply')                         
